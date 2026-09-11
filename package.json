@@ -1,0 +1,7 @@
+{
+  "name": "onecomme-plugin-soop",
+  "version": "1.0.0",
+  "description": "SOOP (AfreecaTV) chat plugin for OneComme",
+  "main": "plugin.js",
+  "author": "orangeqoon"
+}
