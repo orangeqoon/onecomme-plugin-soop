@@ -5,6 +5,8 @@ const tls = require('tls');
 const crypto = require('crypto');
 const https = require('https');
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
 
 const STARTER = '\u001b\t';
 const SEP = '\f';
@@ -535,17 +537,30 @@ async function startSoop(serviceId, bjid) {
   });
 }
 
+function loadConfig(dir) {
+  const targetDir = dir || __dirname;
+  const cfgPath = path.join(targetDir, 'config.json');
+  if (fs.existsSync(cfgPath)) {
+    try {
+      return JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+    } catch (_) {}
+  }
+  return {};
+}
+
 const plugin = {
   name: 'SOOP (AfreecaTV)',
   uid: 'dev.orangeqoon.soop',
-  version: '2.0.0',
+  version: '2.2.0',
   author: 'orangeqoon',
   url: 'https://github.com/orangeqoon/onecomme-plugin-soop',
   permissions: ['comments', 'services'],
   defaultState: {},
 
-  init() {
-    log('SOOPプラグイン起動（URL常時自動監視モード v2.1）');
+  init(ctx) {
+    const dir = ctx && ctx.dir ? ctx.dir : __dirname;
+    log('SOOPプラグイン起動（自動枠検知・常時安定モード v2.2）');
+    this.dir = dir;
 
     this.timer = setInterval(async () => {
       try {
@@ -553,11 +568,12 @@ const plugin = {
         if (!res.ok) return;
         const services = await res.json();
 
-        // SOOPのURL、またはエイリアスURL(/soop/)を含む枠を探す
+        // 枠名に SOOP を含む枠、または URL に sooplive/afreecatv/soop を含む枠を探す
         const soopService = services.find((s) => {
           if (!s.enabled) return false;
+          const name = (s.name || '').toLowerCase();
           const u = (s.url || '').toLowerCase();
-          return u.includes('sooplive.') || u.includes('afreecatv.') || u.includes('/soop/');
+          return name.includes('soop') || u.includes('sooplive.') || u.includes('afreecatv.') || u.includes('/soop/');
         });
 
         if (!soopService) {
@@ -568,8 +584,26 @@ const plugin = {
           return;
         }
 
-        const bjid = extractBjid(soopService.url);
+        // BJIDの取得: URLから、または config.json から、または枠名から
+        let bjid = extractBjid(soopService.url);
+        if (!bjid) {
+          const cfg = loadConfig(this.dir);
+          bjid = cfg.bjid || cfg.streamer_id || '';
+        }
+        if (!bjid) {
+          const m = (soopService.name || '').match(/soop[:\s_]+([a-zA-Z0-9_]{2,32})/i);
+          if (m) bjid = m[1];
+        }
         if (!bjid) return;
+
+        // 内蔵ブラウザのエラー切断防止（URLが設定されていたら自動クリア）
+        if (soopService.url && soopService.url.trim() !== '') {
+          fetch('http://localhost:11180/api/services/' + soopService.id, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...soopService, url: '', meta: {} })
+          }).catch(() => {});
+        }
 
         // 枠IDまたはBJIDが切り替わった場合、または未接続の場合に接続開始
         if (currentBjid !== bjid || currentServiceId !== soopService.id || !activeSocket) {
