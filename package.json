@@ -1,7 +1,27 @@
 {
   "name": "onecomme-plugin-soop",
-  "version": "1.0.0",
-  "description": "SOOP (AfreecaTV) chat plugin for OneComme",
+  "version": "2.1.0",
+  "description": "SOOP (formerly AfreecaTV) live comment synchronization plugin for OneComme",
   "main": "plugin.js",
-  "author": "orangeqoon"
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "onecomme",
+    "onecomme-plugin",
+    "soop",
+    "afreecatv",
+    "live-chat",
+    "streaming"
+  ],
+  "author": "orangeqoon",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/orangeqoon/onecomme-plugin-soop.git"
+  },
+  "bugs": {
+    "url": "https://github.com/orangeqoon/onecomme-plugin-soop/issues"
+  },
+  "homepage": "https://github.com/orangeqoon/onecomme-plugin-soop#readme"
 }
