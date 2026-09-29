@@ -438,10 +438,15 @@ function createChat(channel, handlers) {
   return { close: cleanup };
 }
 
-async function emitComment(serviceId, event) {
+async function emitComment(serviceId, event, streamerNick) {
   if (!serviceId) return;
   seq += 1;
   const now = event.timestamp || Date.now();
+  const rawName = event.name || 'SOOP';
+  // わんコメの「除外ユーザー」設定に配信者本人のIDが登録されているケースが多いため、
+  // 配信者自身のコメントは名前を区別して除外一致を回避する（Rumble/Picartoプラグインと同じ方式）
+  const isStreamerComment = Boolean(streamerNick) && rawName === streamerNick;
+  const displayName = isStreamerComment ? rawName + ' (配信者)' : rawName;
   const payload = {
     service: {
       id: serviceId,
@@ -452,7 +457,7 @@ async function emitComment(serviceId, event) {
     comment: {
       id: 'soop-' + now + '-' + seq,
       userId: event.userId || 'soop',
-      name: event.name || 'SOOP',
+      name: displayName,
       badges: [],
       profileImage: '',
       comment: event.comment,
@@ -473,7 +478,7 @@ async function emitComment(serviceId, event) {
     }
   }, (res) => {
     if (res.statusCode === 200) {
-      log('わんコメへ送信完了 [OK]: ' + event.name + ': ' + event.comment);
+      log('わんコメへ送信完了 [OK]: ' + displayName + ': ' + event.comment);
     } else {
       let data = '';
       res.on('data', d => data += d);
@@ -527,7 +532,7 @@ async function startSoop(serviceId, bjid) {
     onJoined: () => log('★ コメント受信中！わんコメへ送信開始'),
     onEvent: (event) => {
       log('受信 [' + event.name + ']: ' + event.comment);
-      emitComment(serviceId, event).catch(() => {});
+      emitComment(serviceId, event, channel.streamerNick).catch(() => {});
     },
     onError: (err) => log('チャットエラー: ' + (err && err.message ? err.message : String(err))),
     onClose: () => {
@@ -551,7 +556,7 @@ function loadConfig(dir) {
 const plugin = {
   name: 'SOOP (AfreecaTV)',
   uid: 'dev.orangeqoon.soop',
-  version: '2.2.2',
+  version: '2.3.0',
   author: 'orangeqoon',
   url: 'https://github.com/orangeqoon/onecomme-plugin-soop',
   permissions: ['comments', 'services'],
@@ -559,7 +564,7 @@ const plugin = {
 
   init(ctx) {
     const dir = ctx && ctx.dir ? ctx.dir : __dirname;
-    log('SOOPプラグイン起動（自動枠検知・常時安定モード v2.2.1）');
+    log('SOOPプラグイン起動（自動枠検知・常時安定モード v2.3.0）');
     this.dir = dir;
 
     this.timer = setInterval(async () => {
