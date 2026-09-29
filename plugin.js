@@ -454,7 +454,7 @@ async function emitComment(serviceId, event) {
       userId: event.userId || 'soop',
       name: event.name || 'SOOP',
       badges: [],
-      profileImage: event.userId ? ('https://profile.img.afreecatv.com/LOGO/' + event.userId.slice(0, 2) + '/' + event.userId + '/' + event.userId + '.jpg') : '',
+      profileImage: '',
       comment: event.comment,
       hasGift: Boolean(event.hasGift),
       isOwner: Boolean(event.isOwner),
@@ -551,7 +551,7 @@ function loadConfig(dir) {
 const plugin = {
   name: 'SOOP (AfreecaTV)',
   uid: 'dev.orangeqoon.soop',
-  version: '2.2.0',
+  version: '2.2.2',
   author: 'orangeqoon',
   url: 'https://github.com/orangeqoon/onecomme-plugin-soop',
   permissions: ['comments', 'services'],
@@ -559,7 +559,7 @@ const plugin = {
 
   init(ctx) {
     const dir = ctx && ctx.dir ? ctx.dir : __dirname;
-    log('SOOPプラグイン起動（自動枠検知・常時安定モード v2.2）');
+    log('SOOPプラグイン起動（自動枠検知・常時安定モード v2.2.1）');
     this.dir = dir;
 
     this.timer = setInterval(async () => {
@@ -568,9 +568,8 @@ const plugin = {
         if (!res.ok) return;
         const services = await res.json();
 
-        // 枠名に SOOP を含む枠、または URL に sooplive/afreecatv/soop を含む枠を探す
+        // 枠名に SOOP を含む枠、または URL に sooplive/afreecatv/soop を含む枠を探す（OFFでも検出してコメント注入）
         const soopService = services.find((s) => {
-          if (!s.enabled) return false;
           const name = (s.name || '').toLowerCase();
           const u = (s.url || '').toLowerCase();
           return name.includes('soop') || u.includes('sooplive.') || u.includes('afreecatv.') || u.includes('/soop/');
@@ -578,10 +577,19 @@ const plugin = {
 
         if (!soopService) {
           if (activeSocket || currentBjid) {
-            log('SOOP枠がオフになりました。切断します。');
+            log('SOOP枠が見つかりません。切断します。');
             disconnect();
           }
           return;
+        }
+
+        // わんコメの接続数制限を回避するため、枠は常にOFF（未接続）に維持して直接コメント注入
+        if (soopService.enabled) {
+          fetch('http://localhost:11180/api/services/' + soopService.id, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...soopService, enabled: false, url: '', meta: {} }),
+          }).catch(() => {});
         }
 
         // BJIDの取得: URLから、または config.json から、または枠名から

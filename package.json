@@ -1,6 +1,6 @@
 {
   "name": "onecomme-plugin-soop",
-  "version": "2.1.0",
+  "version": "2.2.2",
   "description": "SOOP (formerly AfreecaTV) live comment synchronization plugin for OneComme",
   "main": "plugin.js",
   "scripts": {
