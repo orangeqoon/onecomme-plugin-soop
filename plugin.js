@@ -553,6 +553,14 @@ function loadConfig(dir) {
   return {};
 }
 
+function saveConfig(dir, cfg) {
+  const targetDir = dir || __dirname;
+  const file = path.join(targetDir, 'config.json');
+  const tmp = file + '.tmp-' + process.pid;
+  fs.writeFileSync(tmp, JSON.stringify(cfg || {}, null, 2) + '\n', 'utf8');
+  fs.renameSync(tmp, file);
+}
+
 const plugin = {
   name: 'SOOP (AfreecaTV)',
   uid: 'dev.orangeqoon.soop',
@@ -608,6 +616,13 @@ const plugin = {
           if (m) bjid = m[1];
         }
         if (!bjid) return;
+
+        // URLはOneCommeの内蔵接続を止めるため空にするが、再接続用のBJIDは失わない。
+        const saved = loadConfig(this.dir);
+        if (saved.bjid !== bjid) {
+          saved.bjid = bjid;
+          try { saveConfig(this.dir, saved); } catch (_) {}
+        }
 
         // 内蔵ブラウザのエラー切断防止（URLが設定されていたら自動クリア）
         if (soopService.url && soopService.url.trim() !== '') {
